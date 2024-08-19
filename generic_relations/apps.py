@@ -1,6 +1,6 @@
 from django.apps import AppConfig
 
 
-class RestApisConfig(AppConfig):
+class GenericRelationsConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
-    name = 'Rest_Apis'
+    name = 'generic_relations'
