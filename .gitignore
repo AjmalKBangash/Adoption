@@ -1,0 +1,52 @@
+
+# Python byte-code
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Django-specific
+
+Adoption/.env
+Adoption/settings.py
+db.sqlite3
+/static/
+/media/
+
+# IDE-specific
+.idea/
+*.iml
+*.DS_Store
+
+# # Virtual environment i have not included virtual environment
+# venv/
+# env/
+# lib/python*/site-packages/
+
+# Sensitive data
+secret_key.py
+local_settings.py
+
+# Large files
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.wmv
+*.flv
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.psd
+*.ai
+*.eps
+*.indd
+# .pdf and others? It depeneds whether i want to include it or not depends on business logic although not to include it 
+*.pdf    
+*.doc
+*.docx
+*.xls
+*.xlsx
+*.ppt
+*.pptx
