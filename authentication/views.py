@@ -24,7 +24,9 @@ from rest_framework.permissions import AllowAny,IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
 from .utils import UserActivation
 from django.template.loader import render_to_string
-from django.shortcuts import render
+from django.core.exceptions import ValidationError
+from django.contrib.auth.password_validation import validate_password
+
 
 
 class CustomUser(ListCreateAPIView,RetrieveUpdateDestroyAPIView):
@@ -167,33 +169,7 @@ class ConfirmingEmail(APIView):
         except Exception as e:
             return Response({'error': 'Bad credentials'}, status=status.HTTP_400_BAD_REQUEST)
         
-        # //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 # THIS VIEW IS FOR RESETING PASSWORD FOR USER SENDING THEM LINK VIA EMAIL
-# class ResetPasswordSendingEmail(APIView):
-#     def post(self, request, *args, **kwargs):
-#         try:
-#             user_email = request.data.get('email')
-#             if user_email:
-#                 user = Custom_made_User.objects.get(email = user_email)
-#                 token = default_token_generator.make_token(user)
-#                 uidb64 = urlsafe_base64_encode(force_bytes(user.email))
-#                 frontend_app = settings.FRONTEND_APP
-#                 # reset_url = f"http://localhost:3000/reset-password/{uidb64}/{token}/"
-#                 reset_url = f"{frontend_app}/reset-password/{uidb64}/{token}/"
-
-#                 send_mail(
-#                     'Password Reset',
-#                     f'Click the following link to reset your password: {reset_url}',
-#                     settings.EMAIL_HOST_USER,
-#                     [user.email],
-#                     fail_silently=False,
-#                     )
-#                 return Response({'success': "We've sent a password reset link to your email address.Please check your inbox (and spam folder, just in case) and follow the instructions to reset your password"}, status=status.HTTP_200_OK)
-#             else:
-#                 raise LookupError
-#         except Exception as e:
-#             return Response({"error": 'Please provide valid email!'}, status=status.HTTP_401_UNAUTHORIZED)
-
 class ResetPasswordSendingEmail(APIView):
     def post(self, request, *args, **kwargs):
         try:
@@ -204,7 +180,6 @@ class ResetPasswordSendingEmail(APIView):
                 uidb64 = urlsafe_base64_encode(force_bytes(user.email))
                 frontend_app = settings.FRONTEND_APP
                 reset_url = f"{frontend_app}/reset-password/{uidb64}/{token}/"
-
                 # Prepare the HTML message with your company name
                 subject = 'Password Reset Request'
                 message = render_to_string('reset_password_email.html', {
@@ -212,7 +187,6 @@ class ResetPasswordSendingEmail(APIView):
                     'reset_url': reset_url,
                     'company_name': 'Allikhwa',
                 })
-
                 send_mail(
                     subject,
                     '',
@@ -221,7 +195,6 @@ class ResetPasswordSendingEmail(APIView):
                     fail_silently=False,
                     html_message=message,  # Use HTML content for the email
                 )
-
                 # Render the success template html document in resposne which is not good because we want http resposne for our frontend the html response is needed when django is bot serving frontend and backend 
                 # return render(request, 'password_reset_success.html', status=status.HTTP_200_OK)
                 return Response({'success': "We've sent a password reset link to your email address.Please check your inbox (and spam folder, just in case) and follow the instructions to reset your password"}, status=status.HTTP_200_OK)
@@ -231,27 +204,6 @@ class ResetPasswordSendingEmail(APIView):
             # Render the error template
             # return render(request, 'password_reset_error.html', status=status.HTTP_401_UNAUTHORIZED)
             return Response({"error": 'Please provide valid email!'}, status=status.HTTP_401_UNAUTHORIZED)
-            
-            
-# THIS VIEW IS FOR RESETING PASSWORD FOR USER IF THE USER FORGOT HIS/HER PASSWORD 
-# class ResetPassword(APIView):
-#     def post(self, request, *args, **kwargs):
-#         try:
-#             uidb64 = request.data.get('uidb64')
-#             user_email = force_str(urlsafe_base64_decode(uidb64))
-#             token = request.data.get('token')
-#             user = Custom_made_User.objects.get(email = str(user_email))
-#             if default_token_generator.check_token(user, token) and user:
-#                 user.set_password(request.data.get('password'))
-#                 user.save()
-#                 return Response({'success': 'Password reset successfully'}, status=status.HTTP_202_ACCEPTED)
-#             else:
-#                 return Response({'error': 'Please provide valid data or recycle the process!'})
-#         except Exception as e:
-#             return Response({'error': 'Please provide valid data or recycle the process!'})
-
-from django.core.exceptions import ValidationError
-from django.contrib.auth.password_validation import validate_password
 
 class ResetPassword(APIView):
     def post(self, request, *args, **kwargs):
@@ -261,13 +213,11 @@ class ResetPassword(APIView):
             token = request.data.get('token')
             user = Custom_made_User.objects.get(email=str(user_email))
             password = request.data.get('password')
-
             # Validate the password
             try:
                 validate_password(password, user)
             except ValidationError as e:
                 return Response({'error': e.messages}, status=status.HTTP_400_BAD_REQUEST)
-
             if default_token_generator.check_token(user, token) and user:
                 user.set_password(password)
                 user.save()
