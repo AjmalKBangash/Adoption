@@ -162,7 +162,8 @@ class ConfirmingEmail(APIView):
                 if user_instance_otp.user_otp ==  request.data.get('user_otp'):
                     user_instance = Custom_made_User.objects.get(email = request.data.get('user_email'))
                     if user_instance:
-                        user_instance.is_active = True
+                        # user_instance.is_active = True
+                        user_instance.is_confirmed = True
                         user_instance.save()
                     user_instance_otp.delete()
             return Response({'Account verified successfully'}, status=status.HTTP_200_OK)

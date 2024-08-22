@@ -28,11 +28,16 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     email = models.EmailField(unique=True, primary_key=True)
     # phone = models.CharField(max_length=14 )
     date = models.DateField(auto_now_add=True)
-    is_active = models.BooleanField(("is active"), default=False)
+    #IS_ACTIVE MODIFIED TO TRUE AND FOR EMAIL CONFIRMATION FOR CREATING USER WE ARE CREATING IS_CONFIRMED ATTRIBUTE
+    is_active = models.BooleanField(("is active"), default=True)
     is_superuser = models.BooleanField(("is superuser"), default=True)
     # profile_picture = models.ImageField(upload_to='profile_pictures/', blank=True)
     is_staff = models.BooleanField(("staff status"),default=True)
     last_login = models.DateTimeField(("last login"), blank=True, null=True)
+    # ADDED LATERLY
+    is_confirmed = models.BooleanField(("is confirmed"), default=False)
+    first_name = models.CharField(max_length=30, blank=True, null=True)  # Add this line
+    last_name = models.CharField(max_length=30, blank=True, null=True)
     USERNAME_FIELD = 'email'
     objects = Allikhwa_UserManager()
     REQUIRED_FIELDS= [ 'username']
