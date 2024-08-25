@@ -10,4 +10,6 @@ urlpatterns = [
     path('confirming-email/', ConfirmingEmail.as_view()),
     path('forgot-password/', ResetPasswordSendingEmail.as_view()),
     path('reset-password/', ResetPassword.as_view()),
+    # social login function 
+    path('complete-social-login/', complete_social_login, name='complete_social_login'),
 ]

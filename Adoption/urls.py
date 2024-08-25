@@ -13,10 +13,11 @@ admin.site.index_title = "Ajay Admin Management System"
 urlpatterns = [
     # path('', adoption_view, name="adoption"),
     path('admin/', admin.site.urls),
-    re_path(r'^auth/', include('drf_social_oauth2.urls', namespace='drf')),
+    # re_path(r'^auth/', include('drf_social_oauth2.urls', namespace='drf')),
+    re_path(r'^auth/', include('social_django.urls', namespace='social')),
     path('authentication/', include('authentication.urls')),
-    path('generic_relations/', include('generic_relations.urls')),  
-    path('rest_apis/', include('rest_apis.urls')),  
+    path('generic-relations/', include('generic_relations.urls')),  
+    path('rest-apis/', include('rest_apis.urls')),  
 ]
 
 
