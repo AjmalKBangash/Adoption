@@ -10,6 +10,8 @@ from .views import adoption_view
 admin.site.site_header = "Ajay Administration"
 admin.site.index_title = "Ajay Admin Management System"
 
+app_name = "social"
+
 urlpatterns = [
     # path('', adoption_view, name="adoption"),
     path('admin/', admin.site.urls),
