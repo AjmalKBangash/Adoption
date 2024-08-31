@@ -26,6 +26,15 @@ from .utils import UserActivation
 from django.template.loader import render_to_string
 from django.core.exceptions import ValidationError
 from django.contrib.auth.password_validation import validate_password
+import jwt
+from jwt import algorithms
+import requests
+from django.shortcuts import redirect
+from django.contrib.auth import login
+# from django.contrib.auth.models import User   # IT IS NOW UPDATED WITH CUSTOM USER CREATED BY ME WHICH IS . AUTHENTICATION.MODELS.PY FILE
+from django.http import HttpResponseBadRequest
+import os
+from decouple import config
 
 
 
@@ -228,6 +237,418 @@ class ResetPassword(APIView):
         except Exception as e:
             return Response({'error': 'Please provide valid data or recycle the process!'}, status=status.HTTP_400_BAD_REQUEST)
 
+
+# /////////////////////////////////////////////////////////////////////////////////////////
+# MANUALLY AUTHORIZATION USER AND THEN ADDING IT TO USER MODEL (OAUTH AUTHORIZATIONA AND AUTHENTICATION)
+
+GOOGLE_CLIENT_ID =  os.getenv('GOOGLE_CLIENT_ID', config('GOOGLE_CLIENT_ID'))
+GOOGLE_CLIENT_SECRET =  os.getenv('GOOGLE_CLIENT_SECRET', config('GOOGLE_CLIENT_SECRET'))
+REDIRECT_URI_GOOGLE = os.getenv('REDIRECT_URI_GOOGLE', config('REDIRECT_URI_GOOGLE'))
+
+# THIS IS THROUGH ACCESS_TOKEN ONLY NOT LEVERAING THE HELP OF ID_TOKEN FOR USER INTEGRITY AND AUTHENTICITY 
+# def google_login(request):
+#     # Step 1: Redirect user to Google's OAuth 2.0 server to initiate the authentication and authorization process.
+#     google_auth_url = (
+#         f"https://accounts.google.com/o/oauth2/v2/auth"
+#         f"?response_type=code"
+#         f"&client_id={GOOGLE_CLIENT_ID}"
+#         f"&redirect_uri={REDIRECT_URI_GOOGLE}"
+#         f"&scope=openid%20email%20profile"
+#         f"&access_type=offline"
+#         f"&prompt=consent"
+#     )
+#     return redirect(google_auth_url)
+
+# def google_callback(request):
+#     # Step 2: Handle the callback from Google with the authorization code.
+#     code = request.GET.get('code')
+#     if not code:
+#         return HttpResponseBadRequest('No code returned from Google.')
+
+#     # Step 3: Exchange the authorization code for an access token.
+#     token_url = "https://oauth2.googleapis.com/token"
+#     token_data = {
+#         'code': code,
+#         'client_id': GOOGLE_CLIENT_ID,
+#         'client_secret': GOOGLE_CLIENT_SECRET,
+#         'redirect_uri': REDIRECT_URI_GOOGLE,
+#         'grant_type': 'authorization_code',
+#     }
+#     token_response = requests.post(token_url, data=token_data)
+#     token_json = token_response.json()
+
+#     if 'access_token' not in token_json:
+#         return HttpResponseBadRequest('Failed to obtain access token.')
+
+#     access_token = token_json['access_token']
+#     id_token = token_json['id_token']
+
+#     # Step 4: Use the access token to get user info.
+#     user_info_url = "https://www.googleapis.com/oauth2/v2/userinfo"
+#     user_info_response = requests.get(user_info_url, headers={'Authorization': f'Bearer {access_token}'})
+#     user_info = user_info_response.json()
+#     print('////////////////////////////////////////////////////////////////////// user nfo //////////////////////////////////////////')
+#     print(user_info)
+
+#     # Step 5: Extract user information and authenticate the user.
+#     email = user_info.get('email')
+#     if not email:
+#         return HttpResponseBadRequest('Failed to get user email.')
+
+#     # Step 6: Authenticate or create the user in Django.
+#     # user, created = User.objects.get_or_create(username=email, defaults={'email': email, 'first_name': user_info.get('given_name'), 'last_name': user_info.get('family_name')})
+#     user, created = Custom_made_User.objects.get_or_create(username=email, defaults={'email': email, 'first_name': user_info.get('given_name'), 'last_name': user_info.get('family_name')})
+#     if created:
+#         print('hfghfjhgfghfghfhgfhgfjhgfjhgfhgfjhgfghfghfghbvcbcbnvcbnvcbnvcbnvcnbcnbvcbnv')
+#         print('created')
+#         print(created)
+#         # Optionally, set a password for the user.
+#         user.set_unusable_password()
+#         user.save()
+
+#     # Step 7: Log the user in.
+#     login(request, user)
+
+#     # Step 8: Redirect the user to the home page or any other page.
+#     return redirect('/')
+
+# THIS IS USING ----ACCESS_TOKEN ----ID_TOKEN ----TOKEN EXPIRATION LOGIC (TOKEN EXPIRATION LOGIC IS ONLY NEEDED IF USER IS MAKING API REQUESTS TO GOOGLE DUE TO MY DJANGO APP IS USING GOOGLE SERVICES)
+
+# Get Google's public keys for JWT signature verification
+def get_google_public_keys():
+    jwks_url = "https://www.googleapis.com/oauth2/v3/certs"
+    jwks = requests.get(jwks_url).json()
+    keys = {}
+    for key in jwks['keys']:
+        kid = key['kid']
+        keys[kid] = algorithms.RSAAlgorithm.from_jwk(key)
+    return keys
+
+# Initiate Google login
+def google_login(request):
+    google_auth_url = (
+        f"https://accounts.google.com/o/oauth2/v2/auth"
+        f"?client_id={GOOGLE_CLIENT_ID}"
+        f"&redirect_uri={REDIRECT_URI_GOOGLE}"
+        f"&response_type=code"
+        f"&scope=openid email profile"
+        f"&state={request.session.session_key}"
+        f"&access_type=offline"  # Request refresh token
+    )
+    return redirect(google_auth_url)
+
+# Google OAuth callback
+def google_callback(request):
+    code = request.GET.get('code')
+    if not code:
+        return HttpResponseBadRequest('No code returned from Google.')
+
+    token_url = "https://oauth2.googleapis.com/token"
+    user_info_url = "https://www.googleapis.com/oauth2/v2/userinfo"
+    token_params = {
+        'client_id': GOOGLE_CLIENT_ID,
+        'client_secret': GOOGLE_CLIENT_SECRET,
+        'code': code,
+        'grant_type': 'authorization_code',
+        'redirect_uri': REDIRECT_URI_GOOGLE,
+    }
+    token_response = requests.post(token_url, data=token_params)
+    token_json = token_response.json()
+
+    if 'id_token' not in token_json:
+        return HttpResponseBadRequest('Failed to obtain ID token.')
+
+    id_token = token_json['id_token']
+    access_token = token_json.get('access_token')
+    # refresh_token = token_json.get('refresh_token')
+    # expires_in = token_json.get('expires_in')
+    
+    if id_token:
+        try:
+            unverified_header = jwt.get_unverified_header(id_token)
+            kid = unverified_header['kid']
+
+            public_keys = get_google_public_keys()
+            public_key = public_keys.get(kid)
+            if public_key is None:
+                return HttpResponseBadRequest('Public key not found.')
+
+            decoded_id_token = jwt.decode(
+                id_token,
+                public_key,
+                algorithms=["RS256"],
+                audience=GOOGLE_CLIENT_ID,
+            )
+
+            email = decoded_id_token.get('email')
+            first_name = decoded_id_token.get('given_name')
+            last_name = decoded_id_token.get('family_name')
+        except jwt.ExpiredSignatureError:
+            if 'access_token' not in token_json:
+                return HttpResponseBadRequest('Failed to obtain access token.')
+            user_info = user_info_response.json()
+            email = user_info.get('email')
+            first_name = user_info.get('given_name')
+            last_name = user_info.get('family_name')
+            if not email:
+                return HttpResponseBadRequest('Failed to get user email.')
+            # return HttpResponseBadRequest('ID Token has expired.')
+        except jwt.InvalidTokenError:
+            if 'access_token' not in token_json:
+                return HttpResponseBadRequest('Failed to obtain access token.')
+            user_info_response = requests.get(user_info_url, headers={'Authorization': f'Bearer {access_token}'})
+            user_info = user_info_response.json()
+            email = user_info.get('email')
+            first_name = user_info.get('given_name')
+            last_name = user_info.get('family_name')
+            if not email:
+                return HttpResponseBadRequest('Failed to get user email.')
+            # return HttpResponseBadRequest('Invalid ID Token.')
+
+    user, created = Custom_made_User.objects.get_or_create(
+        username=first_name + ' ' + last_name, 
+        defaults={'email': email, 'first_name': first_name, 'last_name': last_name}
+    )
+    if created:
+        user.set_unusable_password()
+        user.save()
+
+    login(request, user)
+
+    # Store the access token, expiration time, and refresh token securely (the code here is only needed for token managemnet)
+    # expiration_time = time.time() + expires_in
+    # request.session['access_token'] = access_token
+    # request.session['expiration_time'] = expiration_time
+    # if refresh_token:
+    #     request.session['refresh_token'] = refresh_token
+
+    return redirect('/')
+
+# Refresh Google access token using the refresh token
+# def refresh_google_access_token(refresh_token):
+#     token_url = "https://oauth2.googleapis.com/token"
+#     token_params = {
+#         'client_id': GOOGLE_CLIENT_ID,
+#         'client_secret': GOOGLE_CLIENT_SECRET,
+#         'refresh_token': refresh_token,
+#         'grant_type': 'refresh_token',
+#     }
+#     token_response = requests.post(token_url, data=token_params)
+#     token_json = token_response.json()
+
+#     if 'access_token' in token_json:
+#         return token_json['access_token'], token_json['expires_in']
+#     else:
+#         raise Exception("Failed to refresh access token")
+
+# # Check if the token is expired
+# def is_token_expired(expiration_time):
+#     return time.time() > expiration_time
+
+# # Example protected view that checks for token expiration
+# def some_protected_view(request):
+#     access_token = request.session.get('access_token')
+#     expiration_time = request.session.get('expiration_time')
+#     refresh_token = request.session.get('refresh_token')
+
+#     if is_token_expired(expiration_time):
+#         if refresh_token:
+#             try:
+#                 access_token, expires_in = refresh_google_access_token(refresh_token)
+#                 expiration_time = time.time() + expires_in
+#                 request.session['access_token'] = access_token
+#                 request.session['expiration_time'] = expiration_time
+#             except Exception as e:
+#                 return HttpResponseBadRequest(str(e))
+#         else:
+#             return redirect('/oauth/google/login/')  # Redirect to login if no refresh token is available
+
+#     # Proceed with using the valid access token
+#     api_url = 'https://www.googleapis.com/oauth2/v3/userinfo'
+#     headers = {'Authorization': f'Bearer {access_token}'}
+#     response = requests.get(api_url, headers=headers)
+#     user_info = response.json()
+
+#     return HttpResponse(f'Hello, {user_info["name"]}!')
+
+
+# ////////////////////////////////////////////////////////////////////////// NOW FOR FACEBOOK 
+
+FACEBOOK_CLIENT_ID = os.getenv('FACEBOOK_CLIENT_ID', config('FACEBOOK_CLIENT_ID'))
+FACEBOOK_CLIENT_SECRET = os.getenv('FACEBOOK_CLIENT_SECRET', config('FACEBOOK_CLIENT_SECRET'))
+REDIRECT_URI_FACEBOOK = os.getenv('REDIRECT_URI_FACEBOOK', config('REDIRECT_URI_FACEBOOK'))
+
+
+# THIS IS THROUGH ACCESS_TOKEN ONLY ACCESS_TOKEN IS FOR AUTHORIZATION
+# def facebook_login(request):
+#     # Step 1: Redirect user to Facebook's OAuth 2.0 server to initiate the authentication and authorization process.
+#     facebook_auth_url = (
+#         f"https://www.facebook.com/v13.0/dialog/oauth"
+#         f"?client_id={FACEBOOK_CLIENT_ID}"
+#         f"&redirect_uri={REDIRECT_URI_FACEBOOK}"
+#         f"&state={request.session.session_key}"
+#         f"&scope=email,public_profile"
+#     )
+#     return redirect(facebook_auth_url)
+
+# def facebook_callback(request):
+#     # Step 2: Handle the callback from Facebook with the authorization code.
+#     code = request.GET.get('code')
+#     if not code:
+#         return HttpResponseBadRequest('No code returned from Facebook.')
+
+#     # Step 3: Exchange the authorization code for an access token.
+#     token_url = "https://graph.facebook.com/v13.0/oauth/access_token"
+#     token_params = {
+#         'client_id': FACEBOOK_CLIENT_ID,
+#         'redirect_uri': REDIRECT_URI_FACEBOOK,
+#         'client_secret': FACEBOOK_CLIENT_SECRET,
+#         'code': code,
+#     }
+#     token_response = requests.get(token_url, params=token_params)
+#     token_json = token_response.json()
+    
+
+#     if 'access_token' not in token_json:
+#         return HttpResponseBadRequest('Failed to obtain access token.')
+
+#     access_token = token_json['access_token']
+
+#     # Step 4: Use the access token to get user info from Facebook.
+#     user_info_url = "https://graph.facebook.com/me"
+#     user_info_params = {
+#         'fields': 'id,name,email,first_name,last_name',
+#         'access_token': access_token,
+#     }
+#     user_info_response = requests.get(user_info_url, params=user_info_params)
+#     user_info = user_info_response.json()
+#     print('faceboook----////////////////////////////////////////////////////////////////////// user nfo //////////////////////////////////////////')
+#     print(user_info)
+
+#     if 'email' not in user_info:
+#         return HttpResponseBadRequest('Failed to get user email.')
+
+#     # Step 5: Extract user information and authenticate the user.
+#     email = user_info.get('email')
+#     if not email:
+#         return HttpResponseBadRequest('Failed to get user email.')
+
+#     # Step 6: Authenticate or create the user in Django.
+#     user, created = Custom_made_User.objects.get_or_create(username=email, defaults={'email': email, 'first_name': user_info.get('first_name'), 'last_name': user_info.get('last_name')})
+#     if created:
+#         print('facebook-----hfghfjhgfghfghfhgfhgfjhgfjhgfhgfjhgfghfghfghbvcbcbnvcbnvcbnvcbnvcnbcnbvcbnv')
+#         print('created')
+#         print(created)
+#         # Optionally, set a password for the user.
+#         user.set_unusable_password()
+#         user.save()
+
+#     # Step 7: Log the user in.
+#     login(request, user)
+
+#     # Step 8: Redirect the user to the home page or any other page.
+#     return redirect('/')
+
+
+# THIS IS THROUGH ID_TOKEN(OPENID CONNECT (OAUTH 2.0 WITH SOME EXTRS CAPABILITIES)) ID_TOKEN IS FOR AUTHENTICATION AND IF ID_TOKEN IS INVALID OR EXPIRE WHATSOEVER THEN IT WILL LEVERAGE THE HELP OF ACCESS_TOKEN
+def get_facebook_public_key(kid):
+    # Fetch the public keys from Facebook
+    jwks_url = "https://www.facebook.com/.well-known/oauth/openid/jwks/"
+    jwks = requests.get(jwks_url).json()
+
+    # Find the correct key using the 'kid' (key ID)
+    for key in jwks['keys']:
+        if key['kid'] == kid:
+            return algorithms.RSAAlgorithm.from_jwk(key)
+    return None
+
+def facebook_login(request):
+    facebook_auth_url = (
+        f"https://www.facebook.com/v13.0/dialog/oauth"
+        f"?client_id={FACEBOOK_CLIENT_ID}"
+        f"&redirect_uri={REDIRECT_URI_FACEBOOK}"
+        f"&state={request.session.session_key}"
+        f"&scope=email,public_profile"
+        f"&response_type=code,token,id_token"
+        f"&nonce={request.session.session_key}"  # Adding a nonce for security
+    )
+    return redirect(facebook_auth_url)
+
+def facebook_callback(request):
+    code = request.GET.get('code')
+    if not code:
+        return HttpResponseBadRequest('No code returned from Facebook.')
+
+    token_url = "https://graph.facebook.com/v13.0/oauth/access_token"
+    token_params = {
+        'client_id': FACEBOOK_CLIENT_ID,
+        'redirect_uri': REDIRECT_URI_FACEBOOK,
+        'client_secret': FACEBOOK_CLIENT_SECRET,
+        'code': code,
+    }
+    token_response = requests.get(token_url, params=token_params)
+    token_json = token_response.json()
+
+    if 'access_token' not in token_json:
+        return HttpResponseBadRequest('Failed to obtain access token.')
+
+    access_token = token_json['access_token']
+    id_token = token_json.get('id_token')
+
+    if id_token:
+        try:
+            # Decode the header of the ID token to get the key ID (kid)
+            unverified_header = jwt.get_unverified_header(id_token)
+            kid = unverified_header['kid']
+
+            # Get the public key that matches the kid
+            public_key = get_facebook_public_key(kid)
+            if public_key is None:
+                return HttpResponseBadRequest('Public key not found.')
+
+            # Verify the ID token using the public key
+            decoded_id_token = jwt.decode(
+                id_token,
+                public_key,
+                algorithms=["RS256"],
+                audience=FACEBOOK_CLIENT_ID,  # Ensure the token is intended for your app
+            )
+
+            email = decoded_id_token.get('email')
+            first_name = decoded_id_token.get('given_name')
+            last_name = decoded_id_token.get('family_name')
+        except jwt.ExpiredSignatureError:
+            return HttpResponseBadRequest('ID Token has expired.')
+        except jwt.InvalidTokenError:
+            return HttpResponseBadRequest('Invalid ID Token.')
+
+    # Fallback to access token if ID token isn't provided
+    if not id_token:
+        user_info_url = "https://graph.facebook.com/me"
+        user_info_params = {
+            'fields': 'id,name,email,first_name,last_name',
+            'access_token': access_token,
+        }
+        user_info_response = requests.get(user_info_url, params=user_info_params)
+        user_info = user_info_response.json()
+
+        if 'email' not in user_info:
+            return HttpResponseBadRequest('Failed to get user email.')
+
+        email = user_info.get('email')
+        first_name = user_info.get('first_name')
+        last_name = user_info.get('last_name')
+
+    user, created = Custom_made_User.objects.get_or_create(
+        username=first_name + ' ' + last_name, 
+        defaults={'email': email, 'first_name': first_name, 'last_name': last_name}
+    )
+    if created:
+        user.set_unusable_password()
+        user.save()
+
+    login(request, user)
+    return redirect('/')
 
 
 

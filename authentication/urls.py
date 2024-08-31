@@ -11,5 +11,9 @@ urlpatterns = [
     path('forgot-password/', ResetPasswordSendingEmail.as_view()),
     path('reset-password/', ResetPassword.as_view()),
     # social login function 
-    path('complete-social-login/', complete_social_login, name='complete_social_login'),
+    # path('complete-social-login/', complete_social_login, name='complete_social_login'),
+    path('oauth/google/', google_login, name='google_login'),
+    path('oauth/google/callback/', google_callback, name='google_callback'),
+    path('oauth/facebook/', facebook_login, name='facebook_login'),
+    path('oauth/facebook/callback/', facebook_callback, name='facebook_callback'),
 ]
