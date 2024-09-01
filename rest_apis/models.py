@@ -1,6 +1,42 @@
 from django.db import models
+from rest_framework.views import APIView
+from uuid import uuid4
+from django.utils.translation import gettext_lazy as _
 
-# Create your models here.
+
+# WHILE DEVELOPONG MODELS IN DJANGO REMEMBER ALL THESE FIELD TYPES
+# AutoField: Automatically generated unique integer field (primary key).
+# BooleanField: Stores True or False values.
+# CharField: Stores character data (e.g., strings).
+# DateField: Stores a date.
+# DateTimeField: Stores a date and time.
+# DecimalField: Stores a decimal number with specified precision and scale.
+# EmailField: Validates email addresses.
+# FileField: Stores file paths.
+# FloatField: Stores floating-point numbers.
+# IntegerField: Stores integers.
+# ManyToManyField: Represents many-to-many relationships between models.
+# NullBooleanField: Stores True, False, or None.
+# OneToOneField: Represents one-to-one relationships between models.
+# PositiveIntegerField: Stores positive integers.
+# SmallIntegerField: Stores small integers.
+# TextField: Stores large text fields.
+# TimeField: Stores a time.
+# URLField: Validates URLs.
+# UUIDField: Stores UUIDs.
+
+class Model001(APIView):
+    charr = models.CharField(_("character field"), max_length=50)
+    textt = models.TextField(_("text field"))
+    numberr = models.PhoneNumberField(_("phone number field"))
+    booleann = models.BooleanField(_("boolean field"))
+    bolleann02 = models.NullBooleanField(_("null boolean field"))
+    score = models.SmallIntegerField(choices=((1, 'Poor'), (2, 'Fair'), (3, 'Good'), (4, 'Very Good'), (5, 'Excellent')))
+    url = models.URLField()
+    token = models.UUIDField(default=uuid4, editable=False)
+    imagee = models.ImageField(_("Ajay Image"), upload_to='Images/', height_field=None, width_field=None, max_length=None)
+    file = models.FileField(upload_to='Documents/')
+    video = models.FileField(_("video field"), upload_to='Videos')
 
 class PermissionCustomModel(models.Model):
     name = models.CharField(("name"), max_length=50)
