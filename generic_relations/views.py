@@ -1,3 +1,12 @@
-from django.shortcuts import render
+# from rest_framework.views import APIView
+from rest_framework.permissions import AllowAny
+from .models import GenericRelationModel
+from .serializers import GenericRelationModelSerializer
+from rest_framework.viewsets import ModelViewSet
 
-# Create your views here.
+
+class GenericRelationModelView(ModelViewSet):
+    permission_classes = [AllowAny]
+    queryset = GenericRelationModel.objects.all()
+    serializer_class = GenericRelationModelSerializer
+    
