@@ -55,11 +55,12 @@ class CustomUser(ListCreateAPIView,RetrieveUpdateDestroyAPIView):
     def post(self, request, *args, **kwargs):
             serializer = self.get_serializer(data = request.data)
             if serializer.is_valid():
-                returned_value = UserActivation.sending_mail(serializer.data['email'])
+                # WE ARE CALLING .delay (when delay called it is sending this task to asynchronous queue for handling and making django process free to handle other tasks) BECAUSE WE ARE LEVERAGING THE HELP OF CELERY FOR SENDING EMAIL TASK WHICH WILL BE HANDLED BY CELERY 
+                returned_value = UserActivation.delay.sending_mail(serializer.data['email'])
             # if returned_value and serializer.is_valid(raise_exception=True):
             if True and serializer.is_valid(raise_exception=True):
                 
-                # ONE WAY TO CREATE USER  THIS IS WRON WAY
+                # ONE WAY TO CREATE USER  THIS IS recommended WAY because we are leveraging the help of serializer for this function
                 user_creation = Custom_made_User()
                 user_creation.email = serializer.data['email']
                 user_creation.username = serializer.data['username']
@@ -240,6 +241,8 @@ class ResetPassword(APIView):
 
 # /////////////////////////////////////////////////////////////////////////////////////////
 # MANUALLY AUTHORIZATION USER AND THEN ADDING IT TO USER MODEL (OAUTH AUTHORIZATIONA AND AUTHENTICATION)
+# REMAINING TASK 001 IS TAHT ADD ANOTHER MODEL WHERE WE CAN FIND THAT USER HAS BEEN REGISTERED FROM WHICH SOCIAL BACKEND THROUGH GOOGLE, FACEBOOK, GITHUB, LINKEDIN ETC
+# REMAINING TASK 002 IS THAT ALLIGN ALL THIS LOGIC WITH RESTful APIs (DRF) AND (DRF-SIMPLEJWT) SO THAT CAN SEEMLESSLY GET TOKENS FOR APIs ACCESSIBILITY 
 
 GOOGLE_CLIENT_ID =  os.getenv('GOOGLE_CLIENT_ID', config('GOOGLE_CLIENT_ID'))
 GOOGLE_CLIENT_SECRET =  os.getenv('GOOGLE_CLIENT_SECRET', config('GOOGLE_CLIENT_SECRET'))

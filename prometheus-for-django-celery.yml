@@ -1,0 +1,11 @@
+global:
+  scrape_interval: 15s # How often to scrape targets
+
+scrape_configs:
+  - job_name: "django"
+    static_configs:
+      - targets: ["192.168.1.14:9001"] # Django metrics endpoint
+
+  - job_name: "celery"
+    static_configs:
+      - targets: ["192.168.1.14:9002"] # Celery Prometheus exporter

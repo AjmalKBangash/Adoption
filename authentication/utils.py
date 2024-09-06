@@ -2,9 +2,11 @@ from django.core.mail import send_mail
 from django.conf import settings
 import random
 from .models import Otps
+from celery import shared_task
 
 class UserActivation():
     @staticmethod
+    @shared_task
     def sending_mail(email):
         random_number = random.randint(1000, 9999)
 
