@@ -11,7 +11,7 @@ app.config_from_object('django.conf:settings', namespace='CELERY')
 app.autodiscover_tasks()
 
 # Set up Prometheus metrics for Celery
-setup_metrics(app)
+setup_metrics()
 
 if __name__ == "__main__":
     start_http_server(9002)  # Port where metrics will be exposed

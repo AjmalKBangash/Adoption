@@ -6,7 +6,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 from .views import adoption_view
 # PROMETHEUS 
-from prometheus_client import multiprocess, generate_latest
+from prometheus_client import generate_latest
 from django.http import HttpResponse
 
 

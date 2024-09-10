@@ -1,6 +1,11 @@
 from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView
+from rest_framework.response import Response
 from .models import PermissionCustomModel, Model001
 from .serializers import PermissionCustomModelSerializer, Model001Serializer
+# from django.utils.decorators import method_decorator
+# from django.views.decorators.cache import cache_page
+from django.core.cache import cache
+from django.conf import settings
 
 from rest_framework.permissions import IsAuthenticated, AllowAny, DjangoModelPermissions
 # from oauth2_provider.contrib.rest_framework import OAuth2Authentication
@@ -98,6 +103,7 @@ class Model001DetailView(RetrieveUpdateDestroyAPIView):
 #         instance.delete()
 #         return Response(status=status.HTTP_204_NO_CONTENT)
 
+CACHE_TTL = settings.CACHE_TTL
 class PermissionCustomModelListView(ListCreateAPIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
@@ -110,8 +116,32 @@ class PermissionCustomModelListView(ListCreateAPIView):
             return [AllowAny()]
         else:
             return [IsAuthenticated()]
+        
+    # @method_decorator(cache_page(CACHE_TTL)) # IT IS NOT WORKING BECAUSE THIS IS ONLY DJANGO NOT FOR DRF
+    # def get(self, request, *args, **kwargs):
+    #     return self.list(request, *args, **kwargs)
     
-class PermissionCustomModelDetailView( RetrieveUpdateDestroyAPIView):
+    def list(self, request, *args, **kwargs):
+        # Use the cache to store/retrieve the queryset or response data
+        cache_key = 'permission_custom_model_list'
+        cached_data = cache.get(cache_key)
+        
+        if cached_data is None:
+            # If cache is empty, fetch data from the database
+            queryset = self.get_queryset()
+            serializer = self.get_serializer(queryset, many=True)
+            cached_data = serializer.data
+            
+            # Cache the serialized data
+            cache.set(cache_key, cached_data, timeout=CACHE_TTL)
+        
+        # Return the cached data wrapped in a Response
+        return Response(cached_data)
+
+    def get_queryset(self):
+        return PermissionCustomModel.objects.all()
+    
+class PermissionCustomModelDetailView(RetrieveUpdateDestroyAPIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated] 
     queryset = PermissionCustomModel.objects.all()
