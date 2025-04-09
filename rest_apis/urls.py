@@ -6,4 +6,5 @@ urlpatterns = [
     path('model001-view/<int:id>/', Model001DetailView.as_view()),
     path('per-chk/', PermissionCustomModelListView.as_view()),
     path('per-chk/<int:id>/', PermissionCustomModelDetailView.as_view()),
+    path('headers', LogRequestHeaders)
 ]

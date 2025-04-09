@@ -154,4 +154,20 @@ class PermissionCustomModelDetailView(RetrieveUpdateDestroyAPIView):
         else:
             return [IsAuthenticated()]
 
+
+# //////////////////////////////////////////////////////////////////////////////////////////////////////////
+from django.http import JsonResponse
+
+def LogRequestHeaders(request):
+    headers = {
+        'Host': request.get_host(),
+        'X-Real-IP': request.META.get('HTTP_X_REAL_IP'),
+        'X-Forwarded-For': request.META.get('HTTP_X_FORWARDED_FOR'),
+        'X-Forwarded-Host': request.META.get('HTTP_X_FORWARDED_HOST'),
+        'X-Forwarded-Proto' : request.META.get('X_FORWARDED_PROTO')
+    }
+    return JsonResponse(headers)
+
+
+
         
